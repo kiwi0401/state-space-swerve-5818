@@ -1,0 +1,105 @@
+package util;
+
+import edu.wpi.first.wpilibj.controller.LinearQuadraticRegulator;
+import edu.wpi.first.wpilibj.estimator.KalmanFilter;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.system.LinearSystem;
+import edu.wpi.first.wpilibj.system.LinearSystemLoop;
+import edu.wpi.first.wpilibj.system.plant.LinearSystemId;
+import edu.wpi.first.wpiutil.math.Nat;
+import edu.wpi.first.wpiutil.math.VecBuilder;
+import edu.wpi.first.wpiutil.math.numbers.N1;
+import edu.wpi.first.wpiutil.math.numbers.N2;
+import org.rivierarobotics.lib.MathUtil;
+
+/**
+ * State-Space Control System using the FRC Characterization method - kS kV and kA
+ */
+public class PositionStateSpaceModel {
+    private final LinearSystemLoop<N2, N1, N1> linearSystemLoop;
+    private final SystemIdentification systemIdentification;
+    private double targetTicks;
+    private final double loopTime;
+
+    /**
+     * State-Space Position Control System using the FRC Characterization method - kV and kA
+     *
+     * @param systemIdentification   kS (static friction) kV (volts/units/s) kA (volts/units/s*s)
+     * @param positionAccuracy       how accurate we think our position model is (higher is more aggressive)
+     * @param velocityAccuracy       how accurate we think our velocity model is (higher is more aggressive)
+     * @param positionErrorTolerance how tolerable we are to position error (lower is more aggressive)
+     * @param velocityErrorTolerance how tolerable we are to velocity error (lower is more aggressive)
+     * @param voltageControlEffort   best left at 12. decrease this to penalize control effort (using more voltage)
+     * @param maxVoltage             the maximum voltage to apply to the motor (use this to limit speed)
+     */
+    public PositionStateSpaceModel(SystemIdentification systemIdentification, double positionAccuracy,
+                                   double velocityAccuracy, double encoderAccuracy,
+                                   double positionErrorTolerance, double velocityErrorTolerance,
+                                   double voltageControlEffort, double maxVoltage) {
+        this(systemIdentification, positionAccuracy, velocityAccuracy,
+                encoderAccuracy, positionErrorTolerance,
+                velocityErrorTolerance, voltageControlEffort, maxVoltage,
+                0.02);
+    }
+
+    /**
+     * State-Space Position Control System using the FRC Characterization method - kV and kA
+     *
+     * @param systemIdentification   kS (static friction) kV (volts/units/s) kA (volts/units/s*s)
+     * @param positionAccuracy       how accurate we think our position model is (higher is more aggressive)
+     * @param velocityAccuracy       how accurate we think our velocity model is (higher is more aggressive)
+     * @param positionErrorTolerance how tolerable we are to position error (lower is more aggressive)
+     * @param velocityErrorTolerance how tolerable we are to velocity error (lower is more aggressive)
+     * @param voltageControlEffort   best left at 12. decrease this to penalize control effort (using more voltage)
+     * @param maxVoltage             the maximum voltage to apply to the motor (use this to limit speed)
+     * @param loopTime               if you want to run the system faster than the default loop time of 20ms, use this
+     */
+    public PositionStateSpaceModel(SystemIdentification systemIdentification, double positionAccuracy,
+                                   double velocityAccuracy, double encoderAccuracy,
+                                   double positionErrorTolerance, double velocityErrorTolerance,
+                                   double voltageControlEffort, double maxVoltage, double loopTime) {
+        this.loopTime = loopTime;
+        this.systemIdentification = systemIdentification;
+
+        LinearSystem<N2, N1, N1> linearPositionSystem =
+                LinearSystemId.identifyPositionSystem(systemIdentification.kV, systemIdentification.kA);
+
+        KalmanFilter<N2, N1, N1> observer = new KalmanFilter<>(
+                Nat.N2(), Nat.N1(),
+                linearPositionSystem,
+                VecBuilder.fill(positionAccuracy, velocityAccuracy),
+                VecBuilder.fill(encoderAccuracy),
+                loopTime
+        );
+
+        LinearQuadraticRegulator<N2, N1, N1> controller
+                = new LinearQuadraticRegulator<>(linearPositionSystem,
+                VecBuilder.fill(positionErrorTolerance, velocityErrorTolerance),
+                VecBuilder.fill(voltageControlEffort),
+                loopTime
+        );
+
+        this.linearSystemLoop = new LinearSystemLoop<>(
+                linearPositionSystem,
+                controller,
+                observer,
+                maxVoltage,
+                loopTime
+        );
+    }
+
+    public void setPosition(double units) {
+        linearSystemLoop.setNextR(units, 0);
+        targetTicks = units;
+    }
+
+    public boolean isWithinTolerance(double units, double tolerance) {
+        return MathUtil.isWithinTolerance(units, targetTicks, tolerance);
+    }
+
+    public double getAppliedVoltage(double units) {
+        linearSystemLoop.correct(VecBuilder.fill(units));
+        linearSystemLoop.predict(loopTime);
+        return linearSystemLoop.getU(0) + systemIdentification.kS;
+    }
+}
