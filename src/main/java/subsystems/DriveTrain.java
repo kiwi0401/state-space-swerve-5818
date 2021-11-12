@@ -46,7 +46,7 @@ public class DriveTrain extends SubsystemBase {
     public DriveTrain() {
         //Position relative to center of robot -> (0,0) is the center
         swervePosition[0] = new Translation2d(0.381, 0.381); //FR
-        swervePosition[1] = new Translation2d(-0.381, 0.381); //FB
+        swervePosition[1] = new Translation2d(-0.381, 0.381); //FL
         swervePosition[2] = new Translation2d(-0.381, -0.381); //BL
         swervePosition[3] = new Translation2d(0.381, -0.381); //BR
 
