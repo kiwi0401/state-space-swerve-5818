@@ -34,11 +34,19 @@ import java.util.regex.Pattern;
  * and object avoidance.
  */
 public class FieldMesh {
+    private static FieldMesh fieldMesh;
+    public static FieldMesh getInstance() throws FileNotFoundException {
+        if(fieldMesh == null) fieldMesh = new FieldMesh();
+        return fieldMesh;
+    }
+
+
+
     public int fieldWidth;
     public int fieldHeight;
     private int aiResolution;
-    private final ArrayList<Polygon> fieldObstacles = new ArrayList<>();
-    private final ArrayList<ArrayList<FieldNode>> nodes = new ArrayList<>();
+    private static final List<Polygon> fieldObstacles = new ArrayList<>();
+    private static final List<ArrayList<FieldNode>> nodes = new ArrayList<>();
     public final double MAX_VELOCITY = 3;
     public final double MAX_ACCELERATION = 0.2;
 
@@ -66,7 +74,7 @@ public class FieldMesh {
                 String[] in = m.group(1).split(",");
                 p.addPoint(Integer.parseInt(in[0].trim()), Integer.parseInt(in[1].trim()));
             }
-            this.fieldObstacles.add(p);
+            FieldMesh.fieldObstacles.add(p);
         }
         updateFieldMesh();
     }
@@ -109,7 +117,7 @@ public class FieldMesh {
      *
      * @param values list of points {double x, double y}(cm) that correspond to a polygons location
      */
-    public void addObstacle(int[]... values) {
+    public void addObstacle(final ArrayList<int[]> values) {
         Polygon p = new Polygon();
         for (var pt : values) {
             p.addPoint(pt[0], pt[1]);
@@ -124,7 +132,7 @@ public class FieldMesh {
      * @param obstacle the obstacle to remove
      */
     public void removeObstacle(Polygon obstacle) {
-        this.fieldObstacles.remove(obstacle);
+        fieldObstacles.remove(obstacle);
         updateFieldMesh();
     }
 
@@ -255,7 +263,7 @@ public class FieldMesh {
     /**
      * @return All the nodes that make up the field mesh
      */
-    public ArrayList<ArrayList<FieldNode>> getFieldNodes() {
+    public List<ArrayList<FieldNode>> getFieldNodes() {
         return nodes;
     }
 

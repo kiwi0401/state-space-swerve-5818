@@ -13,18 +13,20 @@ public class Robot extends TimedRobot
 {
     @Override
     public void robotInit() {
-        //initializeAllSubsystems();
-        //new ButtonConfiguration().initTeleop();
+        if(Robot.isReal()) {
+            initializeAllSubsystems();
+            new ButtonConfiguration().initTeleop();
+        }
         Thread th = null;
         try {
-            FieldMesh m = new FieldMesh();
-            m.addWeightToArea(1000, 600, 500, 1000, 1100);
-            var imgTst = new AIFieldDisplay(m, 100);
+            FieldMesh m = FieldMesh.getInstance();
+            //m.addWeightToArea(1000, 600, 500, 1000, 1100);
+            var imgTst = new AIFieldDisplay(m, 50);
             th = new Thread(imgTst);
+            th.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        th.start();
     }
 
     @Override
@@ -44,5 +46,10 @@ public class Robot extends TimedRobot
 
     private void initializeAllSubsystems() {
         DriveTrain.getInstance();
+        try {
+            FieldMesh.getInstance();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

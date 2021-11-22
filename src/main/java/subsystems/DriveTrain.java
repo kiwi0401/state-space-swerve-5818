@@ -67,13 +67,13 @@ public class DriveTrain extends SubsystemBase {
                 swerveDriveKinematics,
                 //Standard deviations of model states. Increase these numbers to trust your model's state estimates less.
                 //This matrix is in the form [x, y, theta]^T, with units in meters and radians.
-                new MatBuilder<>(Nat.N3(), Nat.N1()).fill(2, .1, .2),
+                new MatBuilder<>(Nat.N3(), Nat.N1()).fill(2, 2, .01),
                 // Standard deviations of the encoder and gyro measurements. Increase these numbers to trust sensor
                 // readings from encoders and gyros less. This matrix is in the form [theta], with units in radians.
                 new MatBuilder<>(Nat.N1(), Nat.N1()).fill(0.1),
                 //Standard deviations of the vision measurements. Increase these numbers to trust global measurements
                 //from vision less. This matrix is in the form [x, y, theta]^T, with units in meters and radians.
-                new MatBuilder<>(Nat.N3(), Nat.N1()).fill(0.01, 2, 0.01) //Vision Measurement stdev
+                new MatBuilder<>(Nat.N3(), Nat.N1()).fill(0.01, 0.01, 0.01) //Vision Measurement stdev
         );
 
         this.holonomicDriveController = new HolonomicDriveController(
