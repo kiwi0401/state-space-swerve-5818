@@ -6,6 +6,11 @@ import edu.wpi.first.wpilibj.geometry.Rotation2d;
 
 public class Gyro {
     private final AHRS navX;
+    private static Gyro gyro;
+    public static Gyro getInstance() {
+        if(gyro == null) gyro = new Gyro();
+        return gyro;
+    }
 
     public Gyro() {
         this.navX = new AHRS(SPI.Port.kMXP);

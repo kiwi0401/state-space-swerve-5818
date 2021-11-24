@@ -54,7 +54,9 @@ repositories {
 }
 
 dependencies {
+    implementation 'com.google.code.gson:gson:2.8.9'
     implementation("org.rivierarobotics:5818-lib:0.2.1")
+    implementation group: 'org.apache.commons', name: 'commons-math3', version: '3.0'
     implementation wpi.deps.wpilib()
     nativeZip wpi.deps.wpilibJni(wpi.platforms.roborio)
     nativeDesktopZip wpi.deps.wpilibJni(wpi.platforms.desktop)

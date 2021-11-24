@@ -11,7 +11,6 @@ import edu.wpi.first.wpilibj.geometry.Pose2d;
 import edu.wpi.first.wpilibj.geometry.Translation2d;
 import edu.wpi.first.wpilibj.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.wpilibj.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.wpilibj.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.trajectory.TrajectoryUtil;
 import edu.wpi.first.wpilibj.trajectory.TrapezoidProfile;
@@ -34,7 +33,7 @@ public class DriveTrain extends SubsystemBase {
     }
 
     public static final double MAX_SPEED = 3.0; // m/s
-    public static final double MAX_ANGULAR_SPEED = Math.PI; // rad/s
+    public static final double MAX_ANGULAR_SPEED = Math.PI / 2; // rad/s
     public static final double MAX_ANGULAR_ACCELERATION = 2 * Math.PI; // rad/s
     private final Gyro gyro;
     private final SwerveModule[] swerveModules = new SwerveModule[4];
@@ -87,6 +86,10 @@ public class DriveTrain extends SubsystemBase {
         );
 
         setDefaultCommand(new SwerveControl());
+    }
+
+    public SwerveDriveKinematics getSwerveDriveKinematics() {
+        return this.swerveDriveKinematics;
     }
 
     /**

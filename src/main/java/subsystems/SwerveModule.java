@@ -33,7 +33,7 @@ public class SwerveModule {
         this.steeringMotor = new WPI_TalonSRX(steeringMotorChannel);
         this.zero_ticks = zero_ticks;
 
-        driveMotor.getEncoder().setPositionConversionFactor(2 * Math.PI * WHEEL_RADIUS / ENCODER_RESOLUTION * 10);
+        driveMotor.getEncoder().setPositionConversionFactor(2 * Math.PI * WHEEL_RADIUS / ENCODER_RESOLUTION);
         driveMotor.getEncoder().setVelocityConversionFactor(2 * Math.PI * WHEEL_RADIUS / ENCODER_RESOLUTION * 10);
 
         SystemIdentification dmSID = new SystemIdentification(0.0, 0.4, 0.4);
@@ -61,7 +61,7 @@ public class SwerveModule {
     }
 
     private double getAngle() {
-        return clampAngle((steeringMotor.getSelectedSensorPosition() - zero_ticks) * STEER_MOTOR_TICK_TO_ANGLE);
+        return clampAngle((steeringMotor.getSensorCollection().getPulseWidthPosition() - zero_ticks) * STEER_MOTOR_TICK_TO_ANGLE);
     }
 
     private double getVelocity() {

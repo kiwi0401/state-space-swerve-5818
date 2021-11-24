@@ -1,31 +1,28 @@
 package util;
 
-import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj.controller.PIDController;
 import edu.wpi.first.wpilibj.geometry.Pose2d;
 import edu.wpi.first.wpilibj.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.geometry.Translation2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.spline.Spline;
 import edu.wpi.first.wpilibj.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.trajectory.TrajectoryConfig;
 import edu.wpi.first.wpilibj.trajectory.TrajectoryGenerator;
 import edu.wpi.first.wpiutil.math.MathUtil;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
-import org.opencv.imgproc.Imgproc;
+import frc.robot.Logging;
+import frc.robot.Robot;
+import org.rivierarobotics.lib.shuffleboard.RSTab;
+import subsystems.DriveTrain;
 
 import java.awt.*;
 import java.awt.geom.Line2D;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.nio.file.Path;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 
 /**
@@ -35,11 +32,12 @@ import java.util.regex.Pattern;
  */
 public class FieldMesh {
     private static FieldMesh fieldMesh;
+    private final RSTab tab;
+
     public static FieldMesh getInstance() throws FileNotFoundException {
-        if(fieldMesh == null) fieldMesh = new FieldMesh();
+        if (fieldMesh == null) fieldMesh = new FieldMesh();
         return fieldMesh;
     }
-
 
 
     public int fieldWidth;
@@ -48,7 +46,9 @@ public class FieldMesh {
     private static final List<Polygon> fieldObstacles = new ArrayList<>();
     private static final List<ArrayList<FieldNode>> nodes = new ArrayList<>();
     public final double MAX_VELOCITY = 3;
-    public final double MAX_ACCELERATION = 0.2;
+    public final double MAX_ACCELERATION = 0.4;
+    private double totalTimePassed = 0;
+    private double amtOfCalculations = 1;
 
     public FieldMesh() throws FileNotFoundException {
         Path fieldDimension = Filesystem.getDeployDirectory().toPath().resolve("AI/fieldInfo.txt");
@@ -76,14 +76,18 @@ public class FieldMesh {
             }
             FieldMesh.fieldObstacles.add(p);
         }
+
+        tab = Logging.robotShuffleboard.getTab("AI");
+
+        tab.setEntry("AI Resolution (cm)", aiResolution);
+
         updateFieldMesh();
     }
 
     /**
      * Creates a field mesh of nodes, mesh is represented as a graph where each
      * node is set as a neighbor of adjacent nodes.
-     *
-     * */
+     */
     private void updateFieldMesh() {
         nodes.clear();
         int cnt = 0;
@@ -153,18 +157,18 @@ public class FieldMesh {
      * prioritize a zone more than others.
      *
      * @param weight amount of weight you want to add to a node (default is 1)
-     * @param x1 top left x location of zone (cm)
-     * @param y1 top left y location of zone (cm)
-     * @param x2 bottom right x location of zone (cm)
-     * @param y2 bottom right y location of zone (cm)
+     * @param x1     top left x location of zone (cm)
+     * @param y1     top left y location of zone (cm)
+     * @param x2     bottom right x location of zone (cm)
+     * @param y2     bottom right y location of zone (cm)
      */
     public void addWeightToArea(double weight, double x1, double y1, double x2, double y2) {
         int cNodeX1 = MathUtil.clamp((int) (x1 / aiResolution), 0, nodes.get(0).size() - 1);
         int cNodeY1 = MathUtil.clamp((int) (y1 / aiResolution), 0, nodes.size() - 1);
         int cNodeX2 = MathUtil.clamp((int) (x2 / aiResolution), 0, nodes.get(0).size() - 1);
         int cNodeY2 = MathUtil.clamp((int) (y2 / aiResolution), 0, nodes.size() - 1);
-        for(int i = cNodeX1; i <= cNodeX2; i++) {
-            for(int j = cNodeY1; j <= cNodeY2; j++) {
+        for (int i = cNodeX1; i <= cNodeX2; i++) {
+            for (int j = cNodeY1; j <= cNodeY2; j++) {
                 nodes.get(j).get(i).nodeWeight = weight;
             }
         }
@@ -202,42 +206,72 @@ public class FieldMesh {
         return Math.atan2(b.yValue - a.yValue, b.xValue - a.xValue);
     }
 
+
     /**
-     *
      * Trajectory Generator which utilizes A* Pathfinding to generate a trajectory that avoids
      * any obstacles on the field.
      *
-     * @param x1 start x value (m)
-     * @param y1 start y value (m)
-     * @param x2 end x value (m)
-     * @param y2 end y value (m)
-     * @param shouldStop whether the path should stop at 0 m/s or continue at max velocity
+     * @param x1              start x value (m)
+     * @param y1              start y value (m)
+     * @param x2              end x value (m)
+     * @param y2              end y value (m)
+     * @param shouldStop      whether the path should stop at 0 m/s or continue at max velocity
      * @param initialVelocity initial velocity of robot. useful for periodic path generation
      * @return Trajectory which corresponds to the start and end values on the field. Avoid objects specified in fieldObstacles.txt
      */
     public Trajectory getTrajectory(double x1, double y1, double x2, double y2, boolean shouldStop, double initialVelocity) {
         try {
+            var startTime = System.nanoTime();
             List<FieldNode> path = getPath(x1 * 100.0, y1 * 100.0, x2 * 100.0, y2 * 100.0);
-            if(path == null || path.size() <= 1) return null;
-            List<Pose2d> poseList = new ArrayList<>();
-            var prev = path.get(0);
-            poseList.add(new Pose2d(new Translation2d(path.get(0).xValue / 100.0, path.get(0).yValue / 100.0), new Rotation2d(angleBetweenNodes(path.get(0), path.get(1)))));
-            int cnt = 0;
-            for(FieldNode n : path) {
-                cnt++;
-                double angle = angleBetweenNodes(prev, n);
-                prev = n;
-                if(cnt == 1) continue;
-                poseList.add(new Pose2d(new Translation2d(n.xValue / 100.0, n.yValue / 100.0), new Rotation2d(angle)));
-            }
+            var poseList = convertPathToPose2d(path);
+            if (poseList == null) return null;
+
             TrajectoryConfig config = new TrajectoryConfig(MAX_VELOCITY, MAX_ACCELERATION);
             config.setEndVelocity(shouldStop ? 0 : MAX_VELOCITY);
             config.setStartVelocity(initialVelocity);
-            return TrajectoryGenerator.generateTrajectory(poseList, config);
+            if (Robot.isReal()) {
+                config.setKinematics(DriveTrain.getInstance().getSwerveDriveKinematics());
+            }
+            Trajectory trajectory = null;
+            try {
+                trajectory = TrajectoryGenerator.generateTrajectory(
+                        poseList.get(0),
+                        poseList.subList(1, poseList.size() - 2).stream().map(Pose2d::getTranslation).collect(Collectors.toList()),
+                        poseList.get(poseList.size() - 1),
+                        config
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+
+            totalTimePassed += (System.nanoTime() - startTime) / 1e7;
+            if (totalTimePassed < 0) totalTimePassed = 0;
+            amtOfCalculations++;
+            double avgTime = totalTimePassed / amtOfCalculations;
+            tab.setEntry("Avg Calculation Time (ms)", (avgTime));
+
+            return trajectory;
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private List<Pose2d> convertPathToPose2d(List<FieldNode> path) {
+        if (path == null || path.size() <= 1) return null;
+        List<Pose2d> poseList = new ArrayList<>();
+        var prev = path.get(0);
+        poseList.add(new Pose2d(new Translation2d(path.get(0).xValue / 100.0, path.get(0).yValue / 100.0), new Rotation2d(angleBetweenNodes(path.get(0), path.get(1)))));
+        int cnt = 0;
+        for (FieldNode n : path) {
+            cnt++;
+            double angle = angleBetweenNodes(prev, n);
+            prev = n;
+            if (cnt == 1) continue;
+            poseList.add(new Pose2d(new Translation2d(n.xValue / 100.0, n.yValue / 100.0), new Rotation2d(angle)));
+        }
+        return poseList;
     }
 
     /**
