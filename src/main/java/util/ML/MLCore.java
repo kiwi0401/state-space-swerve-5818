@@ -12,8 +12,8 @@ import java.util.Map;
 public class MLCore {
     private static MLCore mlCore;
     private final Gson mlInputParser;
-    public static final double ANGLE_PER_PIXEL_X = 1.125 / 2;
-    public static final double ANGLE_PER_PIXEL_Y = 0.75;
+    public static final double ANGLE_PER_PIXEL_X = 1.125 / 4.0;
+    public static final double ANGLE_PER_PIXEL_Y = 0.75 / 2.0;
     public static final int CAMERA_WIDTH = 640;
     public static final int CAMERA_HEIGHT = 480;
 
@@ -49,7 +49,7 @@ public class MLCore {
         return new MLResponse();
     }
 
-    private class MLResponseDeserializer implements JsonDeserializer<MLResponse> {
+    private static class MLResponseDeserializer implements JsonDeserializer<MLResponse> {
         public MLResponse deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
                 throws JsonParseException {
             MLResponse response = new MLResponse();

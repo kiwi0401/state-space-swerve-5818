@@ -2,7 +2,7 @@ package commands.drive;
 
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj2.command.CommandBase;
-import frc.robot.JoystickConfiguration;
+import frc.robot.ControlMap;
 import org.rivierarobotics.lib.MathUtil;
 import subsystems.DriveTrain;
 
@@ -12,8 +12,8 @@ public class SwerveControl extends CommandBase {
     private final Joystick rightJoystick;
     public SwerveControl() {
         this.drivetrain = DriveTrain.getInstance();
-        this.leftJoystick = JoystickConfiguration.driverLeft;
-        this.rightJoystick = JoystickConfiguration.driverRight;
+        this.leftJoystick = ControlMap.driverLeft;
+        this.rightJoystick = ControlMap.driverRight;
         addRequirements(this.drivetrain);
     }
 
