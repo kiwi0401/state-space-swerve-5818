@@ -77,6 +77,7 @@ public class Robot extends TimedRobot {
     double time = Timer.getFPGATimestamp();
     double ttPath = Timer.getFPGATimestamp();
     public static Trajectory trajectory;
+
     @Override
     public void simulationPeriodic() {
         if (Timer.getFPGATimestamp() - ttPath > 0.2) {
@@ -86,7 +87,7 @@ public class Robot extends TimedRobot {
                 int starty = (int) (0);
                 int endy = (int) (m.fieldHeight * Math.random());
                 var generatedTrajectory = m.getTrajectory(startx / 100.0, starty / 100.0, endx / 100.0, endy / 100.0, true, 0);
-                if(generatedTrajectory != null) display.updatePath(generatedTrajectory);
+                if (generatedTrajectory != null) display.updatePath(generatedTrajectory);
             });
             executor.execute(th);
             ttPath = Timer.getFPGATimestamp();

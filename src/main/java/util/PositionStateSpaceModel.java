@@ -17,7 +17,7 @@ import org.rivierarobotics.lib.MathUtil;
 public class PositionStateSpaceModel {
     private final LinearSystemLoop<N2, N1, N1> linearSystemLoop;
     private final SystemIdentification systemIdentification;
-    private double targetTicks;
+    private double targetPosition;
     private final double loopTime;
 
     /**
@@ -89,16 +89,20 @@ public class PositionStateSpaceModel {
 
     public void setPosition(double units) {
         linearSystemLoop.setNextR(units, 0);
-        targetTicks = units;
+        targetPosition = units;
+    }
+
+    public double getTargetPosition() {
+        return targetPosition;
     }
 
     public boolean isWithinTolerance(double units, double tolerance) {
-        return MathUtil.isWithinTolerance(units, targetTicks, tolerance);
+        return MathUtil.isWithinTolerance(units, targetPosition, tolerance);
     }
 
     public double getAppliedVoltage(double units) {
         linearSystemLoop.correct(VecBuilder.fill(units));
         linearSystemLoop.predict(loopTime);
-        return linearSystemLoop.getU(0) + systemIdentification.kS;
+        return linearSystemLoop.getU(0) + (MathUtil.isWithinTolerance(units, 0, 0.01) ? 0 : systemIdentification.kS);
     }
 }

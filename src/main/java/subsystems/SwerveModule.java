@@ -26,7 +26,7 @@ public class SwerveModule {
      *
      * @param driveMotorChannel    ID for the drive motor.
      * @param steeringMotorChannel ID for the turning motor.
-     * @param zero_ticks ticks when angle = 0
+     * @param zero_ticks           ticks when angle = 0
      */
     public SwerveModule(int driveMotorChannel, int steeringMotorChannel, double zero_ticks) {
         this.driveMotor = new CANSparkMax(driveMotorChannel, CANSparkMaxLowLevel.MotorType.kBrushless);
@@ -40,14 +40,14 @@ public class SwerveModule {
         SystemIdentification tmSID = new SystemIdentification(0.0, 0.4, 0.4);
 
         this.driveController = new VelocityStateSpaceModel(
-                dmSID, 0.1,0.1,
-                0.1,12,12
+                dmSID, 0.1, 0.1,
+                0.1, 12, 12
         );
 
         this.steerController = new PositionStateSpaceModel(
-                tmSID, 0.1,0.1,
-                0.1,0.1,0.1,
-                12,12
+                tmSID, 0.1, 0.1,
+                0.1, 0.1, 0.1,
+                12, 12
         );
     }
 
@@ -60,11 +60,11 @@ public class SwerveModule {
         return angle;
     }
 
-    private double getAngle() {
+    public double getAngle() {
         return clampAngle((steeringMotor.getSensorCollection().getPulseWidthPosition() - zero_ticks) * STEER_MOTOR_TICK_TO_ANGLE);
     }
 
-    private double getVelocity() {
+    public double getVelocity() {
         return driveMotor.getEncoder().getVelocity();
     }
 
@@ -72,19 +72,19 @@ public class SwerveModule {
         return new SwerveModuleState(getVelocity(), new Rotation2d(getAngle()));
     }
 
-    private void setDriveMotorVelocity(double metersPerSecond) {
+    public void setDriveMotorVelocity(double metersPerSecond) {
         driveController.setVelocity(metersPerSecond);
     }
 
-    private void setSteeringMotorAngle(double angleInRad) {
+    public void setSteeringMotorAngle(double angleInRad) {
         steerController.setPosition(angleInRad);
     }
 
-    private void setDriveMotorVoltage(double voltage) {
+    public void setDriveMotorVoltage(double voltage) {
         driveMotor.setVoltage(voltage);
     }
 
-    private void setSteeringMotorVoltage(double voltage) {
+    public void setSteeringMotorVoltage(double voltage) {
         steeringMotor.setVoltage(voltage);
     }
 
@@ -97,10 +97,12 @@ public class SwerveModule {
         //Update State-Space Controllers
         setDriveMotorVelocity(state.speedMetersPerSecond);
         setSteeringMotorAngle(state.angle.getRadians());
+    }
 
+    public void periodic() {
         var driveVoltage = driveController.getAppliedVoltage(getVelocity());
-        var turnMotorVoltage = steerController.getAppliedVoltage(getAngle());
         setDriveMotorVoltage(driveVoltage);
+        var turnMotorVoltage = steerController.getAppliedVoltage(getAngle());
         setSteeringMotorVoltage(turnMotorVoltage);
     }
 }

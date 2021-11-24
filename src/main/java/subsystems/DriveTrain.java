@@ -84,8 +84,18 @@ public class DriveTrain extends SubsystemBase {
                 new ProfiledPIDController(1, 0, 0,
                         new TrapezoidProfile.Constraints(MAX_ANGULAR_SPEED, MAX_ANGULAR_ACCELERATION))
         );
+    }
 
-        setDefaultCommand(new SwerveControl());
+    public void setAngleOfSwerveModules(double angle) {
+        for (var m : swerveModules) {
+            m.setSteeringMotorAngle(angle);
+        }
+    }
+
+    public void setVelocityOfSwerveModules(double vel) {
+        for (var m : swerveModules) {
+            m.setDriveMotorVelocity(vel);
+        }
     }
 
     public SwerveDriveKinematics getSwerveDriveKinematics() {
@@ -118,11 +128,13 @@ public class DriveTrain extends SubsystemBase {
             trajectory = TrajectoryUtil.fromPathweaverJson(trajectoryPath);
             swerveDrivePoseEstimator.resetPosition(trajectory.getInitialPose(), gyro.getRotation2d());
             startTime = Timer.getFPGATimestamp();
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
     }
 
     private double startTime = Timer.getFPGATimestamp();
     Trajectory trajectory = new Trajectory();
+
     /**
      * Call this method periodically to follow a trajectory.
      * returns false when path is done.
@@ -155,5 +167,6 @@ public class DriveTrain extends SubsystemBase {
     @Override
     public void periodic() {
         updateOdometry();
+        for (var m : swerveModules) m.periodic();
     }
 }

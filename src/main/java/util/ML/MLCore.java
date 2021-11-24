@@ -31,6 +31,7 @@ public class MLCore {
     public Map<String, List<MLObject>> getDetectedObjects() {
         MLResponse resp = getResponse();
         Map<String, List<MLObject>> ret = new HashMap<>();
+        if(resp == null) return ret;
         for(var obj : resp.objects) {
             if(!ret.containsKey(obj.label)) ret.put(obj.label, new ArrayList<>());
             ret.get(obj.label).add(obj);

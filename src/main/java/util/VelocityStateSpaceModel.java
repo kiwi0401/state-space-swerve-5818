@@ -85,6 +85,10 @@ public class VelocityStateSpaceModel {
         targetVelocity = unitsPerS;
     }
 
+    public double getTargetVelocity() {
+        return targetVelocity;
+    }
+
     public boolean isWithinTolerance(double unitsPerS, double tolerance) {
         return MathUtil.isWithinTolerance(unitsPerS, targetVelocity, tolerance);
     }
@@ -92,6 +96,6 @@ public class VelocityStateSpaceModel {
     public double getAppliedVoltage(double unitsPerS) {
         linearSystemLoop.correct(VecBuilder.fill(unitsPerS));
         linearSystemLoop.predict(loopTime);
-        return linearSystemLoop.getU(0) + systemIdentification.kS;
+        return linearSystemLoop.getU(0) + (MathUtil.isWithinTolerance(unitsPerS, 0, 0.01) ? 0 : systemIdentification.kS);
     }
 }
