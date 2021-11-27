@@ -4,13 +4,16 @@ import commands.drive.SwerveControl;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.trajectory.Trajectory;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import org.rivierarobotics.lib.shuffleboard.RSTable;
 import org.rivierarobotics.lib.shuffleboard.RSTileOptions;
 import subsystems.DriveTrain;
-import util.AIFieldDisplay;
-import util.FieldMesh;
+import util.AIField.AIFieldDisplay;
+import util.AIField.FieldMesh;
+import util.Gyro;
 import util.ML.MLCore;
 
 import java.io.IOException;
@@ -21,6 +24,7 @@ import java.util.concurrent.Executors;
 public class Robot extends TimedRobot {
 
     private RSTable table;
+    Field2d field2d = new Field2d();
 
     @Override
     public void robotInit() {
@@ -29,6 +33,12 @@ public class Robot extends TimedRobot {
             initializeAllSubsystems();
             setDefaultCommands();
         }
+
+        var drive = Shuffleboard.getTab("Drive");
+        drive.add(field2d)
+                .withSize(6, 4)
+                .withPosition(0, 0)
+                .withWidget("Field");
     }
 
     @Override
@@ -36,6 +46,9 @@ public class Robot extends TimedRobot {
         //DISABLE WHEN NOT IN USE - forces NWT to update at the same loop rate as the rio, extremely laggy but useful for
         //tuning state-space
         NetworkTableInstance.getDefault().flush();
+
+        //Default Logging
+        if(Robot.isReal()) shuffleboardLogging();
 
         CommandScheduler.getInstance().run();
     }
@@ -60,11 +73,26 @@ public class Robot extends TimedRobot {
 
     private void initializeAllSubsystems() {
         DriveTrain.getInstance();
+        Gyro.getInstance();
         try {
             FieldMesh.getInstance();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void shuffleboardLogging() {
+        var sb = Logging.robotShuffleboard;
+
+        var drive = sb.getTab("Drive");
+        var dt = DriveTrain.getInstance();
+        field2d.setRobotPose(dt.getRobotPose());
+        drive.setEntry("x vel (m/s)", dt.getChassisSpeeds().vxMetersPerSecond);
+        drive.setEntry("y vel (m/s)", dt.getChassisSpeeds().vyMetersPerSecond);
+        drive.setEntry("turn vel (deg/s)", Math.toDegrees(dt.getChassisSpeeds().omegaRadiansPerSecond));
+        drive.setEntry("x pose", dt.getRobotPose().getX());
+        drive.setEntry("y pose", dt.getRobotPose().getY());
+        drive.setEntry("robot angle", dt.getRobotPose().getRotation().getDegrees());
     }
 
     FieldMesh m;
@@ -93,11 +121,15 @@ public class Robot extends TimedRobot {
         if (Timer.getFPGATimestamp() - ttPath > 0.2) {
             Thread th = new Thread(() -> {
                 double startx = 0;
-                double endx = m.fieldWidth * Math.random();
+                double endx = 1600;
+                //double endx = m.fieldWidth * Math.random();
                 double starty = 0;
+                //double endy = 0;
                 double endy = m.fieldHeight * Math.random();
                 var generatedTrajectory = m.getTrajectory(startx / 100.0, starty / 100.0, endx / 100.0, endy / 100.0, true, 0);
-                if (generatedTrajectory != null) display.updatePath(generatedTrajectory);
+                if (generatedTrajectory != null) {
+                    display.updatePath(generatedTrajectory);
+                }
             });
             executor.execute(th);
             ttPath = Timer.getFPGATimestamp();

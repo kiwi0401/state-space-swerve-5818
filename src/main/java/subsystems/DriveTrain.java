@@ -17,9 +17,13 @@ import edu.wpi.first.wpilibj.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpiutil.math.MatBuilder;
 import edu.wpi.first.wpiutil.math.Nat;
+import frc.robot.Logging;
+import org.rivierarobotics.lib.shuffleboard.RSTab;
 import util.Gyro;
 
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * Represents a swerve drive style drivetrain.
@@ -35,12 +39,16 @@ public class DriveTrain extends SubsystemBase {
     public static final double MAX_SPEED = 3.0; // m/s
     public static final double MAX_ANGULAR_SPEED = Math.PI / 2; // rad/s
     public static final double MAX_ANGULAR_ACCELERATION = Math.PI / 4; // rad/s
+
     private final Gyro gyro;
     private final SwerveModule[] swerveModules = new SwerveModule[4];
     private final Translation2d[] swervePosition = new Translation2d[4];
+    private final String[] driveIDs = new String[]{"FR","FL","BL","BR"};
     private final SwerveDriveKinematics swerveDriveKinematics;
     private final HolonomicDriveController holonomicDriveController;
     private final SwerveDrivePoseEstimator swerveDrivePoseEstimator;
+
+    private final RSTab tab;
 
     public DriveTrain() {
         //Position relative to center of robot -> (0,0) is the center
@@ -53,6 +61,8 @@ public class DriveTrain extends SubsystemBase {
         swerveModules[1] = new SwerveModule(MotorIDs.FRONT_LEFT_DRIVE, MotorIDs.FRONT_LEFT_STEER, 0);
         swerveModules[2] = new SwerveModule(MotorIDs.BACK_LEFT_DRIVE, MotorIDs.BACK_LEFT_STEER, 0);
         swerveModules[3] = new SwerveModule(MotorIDs.BACK_RIGHT_DRIVE, MotorIDs.BACK_RIGHT_STEER, 0);
+
+        this.tab = Logging.robotShuffleboard.getTab("Swerve");
 
         this.gyro = new Gyro();
 
@@ -164,9 +174,28 @@ public class DriveTrain extends SubsystemBase {
         );
     }
 
+    public Pose2d getRobotPose() {
+        return swerveDrivePoseEstimator.getEstimatedPosition();
+    }
+
+    public ChassisSpeeds getChassisSpeeds() {
+        return swerveDriveKinematics.toChassisSpeeds(
+                swerveModules[0].getState(),
+                swerveModules[1].getState(),
+                swerveModules[2].getState(),
+                swerveModules[3].getState()
+        );
+    }
+
     @Override
     public void periodic() {
         updateOdometry();
+        for(int i = 0; i < swerveModules.length; i++) {
+            tab.setEntry(driveIDs[i] + " Swerve Velocity", swerveModules[i].getVelocity());
+            tab.setEntry(driveIDs[i] + " Swerve Angle", Math.toDegrees(swerveModules[i].getAngle()));
+            tab.setEntry(driveIDs[i] + " Swerve Drive Voltage", swerveModules[i].getDriveVoltage());
+            tab.setEntry(driveIDs[i] + " Swerve Steer Voltage", swerveModules[i].getSteerVoltage());
+        }
         for (var m : swerveModules) m.periodic();
     }
 }

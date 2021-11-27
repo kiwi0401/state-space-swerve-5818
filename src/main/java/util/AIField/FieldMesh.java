@@ -1,4 +1,4 @@
-package util;
+package util.AIField;
 
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.geometry.Pose2d;
@@ -45,14 +45,17 @@ public class FieldMesh {
     private int aiResolution;
     private static final List<Polygon> fieldObstacles = new ArrayList<>();
     private static final List<ArrayList<FieldNode>> nodes = new ArrayList<>();
+    private static final List<AreaWeight> areaWeights = new ArrayList<>();
     public final double MAX_VELOCITY = 3;
     public final double MAX_ACCELERATION = 0.4;
+    public final double DEFAULT_NODE_WEIGHT = 0;
     private double totalTimePassed = 0;
     private double amtOfCalculations = 1;
 
     public FieldMesh() throws FileNotFoundException {
         Path fieldDimension = Filesystem.getDeployDirectory().toPath().resolve("AI/fieldInfo.txt");
         Path fieldObstacles = Filesystem.getDeployDirectory().toPath().resolve("AI/fieldObstacles.txt");
+        Path fieldWeights = Filesystem.getDeployDirectory().toPath().resolve("AI/fieldWeights.txt");
         Scanner sc = new Scanner(new FileReader(fieldDimension.toFile()));
 
         sc.next();
@@ -76,6 +79,29 @@ public class FieldMesh {
             }
             FieldMesh.fieldObstacles.add(p);
         }
+        sc.close();
+        sc = new Scanner(fieldWeights.toFile());
+        sc.nextLine();
+
+        while(sc.hasNextLine()) {
+            double wt = sc.nextDouble();
+            sc.nextLine();
+            var m = parseInput.matcher(sc.nextLine());
+            m.find();
+            String[] in = m.group(1).split(",");
+            m.find();
+            String[] in2 = m.group(1).split(",");
+            areaWeights.add(
+                    new AreaWeight(
+                            wt,
+                            Integer.parseInt(in[0]),
+                            Integer.parseInt(in[1]),
+                            Integer.parseInt(in2[0]),
+                            Integer.parseInt(in2[1])
+                    ));
+        }
+
+        sc.close();
 
         tab = Logging.robotShuffleboard.getTab("AI");
 
@@ -103,6 +129,7 @@ public class FieldMesh {
         for (int i = 0; i < nodes.size(); i++) {
             for (int j = 0; j < nodes.get(i).size(); j++) {
                 if (!nodes.get(i).get(j).isValid) continue;
+                weightNode(nodes.get(i).get(j));
                 for (int a = Math.max(0, i - 1); a <= Math.min(i + 1, nodes.size() - 1); a++) {
                     for (int b = Math.max(0, j - 1); b <= Math.min(j + 1, nodes.get(i).size() - 1); b++) {
                         if ((i == a && j == b) || !nodes.get(a).get(b).isValid) continue;
@@ -151,6 +178,18 @@ public class FieldMesh {
         updateFieldMesh();
     }
 
+    public void weightNode(FieldNode node) {
+        node.nodeWeight = DEFAULT_NODE_WEIGHT;
+        for(var aw : areaWeights) {
+            if(aw.containsNode(node)) node.nodeWeight += aw.weight;
+        }
+    }
+
+    public List<AreaWeight> getAreaWeights() {
+        return areaWeights;
+    }
+
+
 
     /**
      * Add weights to the nodes in an area to penalize traveling through it. negative weights will
@@ -169,7 +208,7 @@ public class FieldMesh {
         int cNodeY2 = MathUtil.clamp((int) (y2 / aiResolution), 0, nodes.size() - 1);
         for (int i = cNodeX1; i <= cNodeX2; i++) {
             for (int j = cNodeY1; j <= cNodeY2; j++) {
-                nodes.get(j).get(i).nodeWeight = weight;
+                nodes.get(j).get(i).nodeWeight += weight;
             }
         }
     }
@@ -224,7 +263,7 @@ public class FieldMesh {
             var startTime = System.nanoTime();
             List<FieldNode> path = getPath(x1 * 100.0, y1 * 100.0, x2 * 100.0, y2 * 100.0);
             var poseList = convertPathToPose2d(path);
-            if (poseList == null) return null;
+            if (poseList == null || poseList.size() < 3) return null;
 
             TrajectoryConfig config = new TrajectoryConfig(MAX_VELOCITY, MAX_ACCELERATION);
             config.setEndVelocity(shouldStop ? 0 : MAX_VELOCITY);
@@ -232,6 +271,7 @@ public class FieldMesh {
             if (Robot.isReal()) {
                 config.setKinematics(DriveTrain.getInstance().getSwerveDriveKinematics());
             }
+
             Trajectory trajectory = null;
             try {
                 trajectory = TrajectoryGenerator.generateTrajectory(

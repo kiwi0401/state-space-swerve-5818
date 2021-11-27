@@ -1,6 +1,7 @@
 package frc.robot;
 
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import org.rivierarobotics.lib.shuffleboard.RobotShuffleboard;
 
 public class Logging {

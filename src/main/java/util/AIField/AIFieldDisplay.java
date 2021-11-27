@@ -1,8 +1,9 @@
-package util;
+package util.AIField;
 
 import edu.wpi.cscore.CvSource;
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.trajectory.Trajectory;
 import org.opencv.core.*;
 import org.opencv.imgproc.Imgproc;
@@ -27,6 +28,7 @@ public class AIFieldDisplay implements Runnable {
     private final FieldMesh fieldMesh;
     private final int imgWidth;
     private final int imgHeight;
+    private final double scalingRatio;
     private final int updateRate;
     private static final List<FieldNode> path = Collections.synchronizedList(new ArrayList<>());
     private static volatile Trajectory generatedTrajectory;
@@ -38,7 +40,8 @@ public class AIFieldDisplay implements Runnable {
         this.updateRate = updateRate;
         imgHeight = scalingFactor;
         this.fieldMesh = fieldMesh;
-        imgWidth = (int) (scalingFactor * ((double) fieldMesh.fieldWidth / fieldMesh.fieldHeight));
+        imgWidth = (int) (scalingFactor * (((double) fieldMesh.fieldWidth) / fieldMesh.fieldHeight));
+        scalingRatio = (double)scalingFactor / fieldMesh.fieldHeight;
         this.outputStream = CameraServer.getInstance().putVideo("AI Mesh", imgWidth, imgHeight);
         this.mainImageThread = Executors.newSingleThreadScheduledExecutor();
         startFieldThread(updateRate);
@@ -66,16 +69,13 @@ public class AIFieldDisplay implements Runnable {
                                 var pose1 = generatedTrajectory.sample(i);
                                 var pose2 = generatedTrajectory.sample(i + 0.1);
 
-                                Imgproc.arrowedLine(fieldMat, new Point(pose1.poseMeters.getX() * 100, pose1.poseMeters.getY() * 100),
-                                        new Point(pose2.poseMeters.getX() * 100, pose2.poseMeters.getY() * 100), new Scalar(0, 0, 255 * (generatedTrajectory.sample(i).velocityMetersPerSecond) / 2), 10);
+                                Imgproc.arrowedLine(
+                                        fieldMat,
+                                        new Point(pose1.poseMeters.getX() * 100 * scalingRatio, pose1.poseMeters.getY() * 100 * scalingRatio),
+                                        new Point(pose2.poseMeters.getX() * 100 * scalingRatio, pose2.poseMeters.getY() * 100 * scalingRatio),
+                                        new Scalar(0, 0, 255 * (generatedTrajectory.sample(i).velocityMetersPerSecond) / 2), 10);
                             }
                         }
-
-//                        for (int i = 1; i < tmp.size(); i++) {
-//                            var n1 = tmp.get(i - 1);
-//                            var n2 = tmp.get(i);
-//                            Imgproc.arrowedLine(fieldMat, new Point(n1.xValue, n1.yValue), new Point(n2.xValue, n2.yValue), new Scalar(0, 0, 255), 2);
-//                        }
 
                         needsToRender = false;
                     }
@@ -95,18 +95,15 @@ public class AIFieldDisplay implements Runnable {
 
     private Mat createField() {
         Mat field = new Mat(imgHeight, imgWidth, CvType.CV_8UC(4), Scalar.all(100));
-        var nodes = fieldMesh.getFieldNodes();
-        for (var n : nodes) {
-            for (var p : n) {
-                if (!p.isValid) continue;
-                for (var e : p.neighbors) {
-                    Point a = new Point(p.xValue, p.yValue);
-                    Point b = new Point(e.node.xValue, e.node.yValue);
-                    Imgproc.line(field, a, b, new Scalar(0, 255, 0), 1);
-                }
-            }
-        }
 
+        drawFieldMesh(field);
+        drawFieldObstacles(field);
+        drawWeightedAreas(field);
+
+        return field;
+    }
+
+    private void drawFieldObstacles(Mat field) {
         Scalar color = new Scalar(64, 64, 64);
         int lineType = Imgproc.LINE_8;
         var fieldObstacles = fieldMesh.getObstacles();
@@ -114,12 +111,41 @@ public class AIFieldDisplay implements Runnable {
             List<MatOfPoint> list = new ArrayList<>();
             Point[] pts = new Point[obstacle.npoints];
             for (int i = 0; i < obstacle.npoints; i++) {
-                pts[i] = (new Point(obstacle.xpoints[i], obstacle.ypoints[i]));
+                pts[i] = (new Point(obstacle.xpoints[i] * scalingRatio, obstacle.ypoints[i] * scalingRatio));
             }
             list.add(new MatOfPoint(pts));
             Imgproc.fillPoly(field, list, color, lineType);
         }
-        return field;
+    }
+
+    private void drawWeightedAreas(Mat field) {
+        var weightedAreas = fieldMesh.getAreaWeights();
+        for(var aw : weightedAreas) {
+            Imgproc.rectangle(
+                    field,
+                    new Point(aw.x1 * scalingRatio, aw.y1 * scalingRatio),
+                    new Point(aw.x2 * scalingRatio, aw.y2 * scalingRatio),
+                    new Scalar(0,0,255 * (aw.weight / 20.0)),
+                    3);
+        }
+    }
+
+    private void drawFieldMesh(Mat field) {
+        var nodes = fieldMesh.getFieldNodes();
+        for (var n : nodes) {
+            for (var p : n) {
+                if (!p.isValid) continue;
+                for (var e : p.neighbors) {
+                    Point a = new Point(p.xValue * scalingRatio, p.yValue * scalingRatio);
+                    Point b = new Point(e.node.xValue * scalingRatio, e.node.yValue * scalingRatio);
+                    if(p.nodeWeight < 0) {
+                        Imgproc.line(field, a, b, new Scalar(255, 0, 0, 1));
+                    } else {
+                        Imgproc.line(field, a, b, new Scalar(0, 255 - (255 * (p.nodeWeight) / 60.0), 255 * (p.nodeWeight) / 60.0), 1);
+                    }
+                }
+            }
+        }
     }
 
     private static boolean obstacles = false;

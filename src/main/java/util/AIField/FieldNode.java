@@ -1,4 +1,4 @@
-package util;
+package util.AIField;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ public class FieldNode implements Comparable<FieldNode> {
     public FieldNode parent = null;
     double xValue = 0;
     double yValue = 0;
-    double nodeWeight = 1;
+    double nodeWeight = 0;
 
     public List<FieldNode.Edge> neighbors;
 

@@ -5,6 +5,8 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel;
 import edu.wpi.first.wpilibj.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.kinematics.SwerveModuleState;
+import frc.robot.Logging;
+import org.rivierarobotics.lib.shuffleboard.RSTab;
 import util.PositionStateSpaceModel;
 import util.SystemIdentification;
 import util.VelocityStateSpaceModel;
@@ -16,6 +18,8 @@ public class SwerveModule {
 
     private final CANSparkMax driveMotor;
     private final VelocityStateSpaceModel driveController;
+    private double currDriveVoltage = 0;
+    private double currSteerVoltage = 0;
 
     private final WPI_TalonSRX steeringMotor;
     private final static double STEER_MOTOR_TICK_TO_ANGLE = 2 * Math.PI / ENCODER_RESOLUTION;
@@ -64,6 +68,14 @@ public class SwerveModule {
         return clampAngle((steeringMotor.getSensorCollection().getPulseWidthPosition() - zero_ticks) * STEER_MOTOR_TICK_TO_ANGLE);
     }
 
+    public double getDriveVoltage() {
+        return currDriveVoltage;
+    }
+
+    public double getSteerVoltage() {
+        return currSteerVoltage;
+    }
+
     public double getVelocity() {
         return driveMotor.getEncoder().getVelocity();
     }
@@ -81,10 +93,12 @@ public class SwerveModule {
     }
 
     public void setDriveMotorVoltage(double voltage) {
+        currDriveVoltage = voltage;
         driveMotor.setVoltage(voltage);
     }
 
     public void setSteeringMotorVoltage(double voltage) {
+        currSteerVoltage = voltage;
         steeringMotor.setVoltage(voltage);
     }
 
@@ -102,6 +116,7 @@ public class SwerveModule {
     public void periodic() {
         var driveVoltage = driveController.getAppliedVoltage(getVelocity());
         setDriveMotorVoltage(driveVoltage);
+
         var turnMotorVoltage = steerController.getAppliedVoltage(getAngle());
         setSteeringMotorVoltage(turnMotorVoltage);
     }
