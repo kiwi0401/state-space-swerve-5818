@@ -19,9 +19,9 @@ public class SwerveControl extends CommandBase {
 
     @Override
     public void execute() {
-        var xSpeed = MathUtil.wrapToCircle(leftJoystick.getY()) * DriveTrain.MAX_SPEED;
-        var ySpeed = MathUtil.wrapToCircle(leftJoystick.getX()) * DriveTrain.MAX_SPEED;
-        var rot = MathUtil.wrapToCircle(rightJoystick.getX()) * DriveTrain.MAX_ANGULAR_SPEED;
+        var xSpeed = MathUtil.fitDeadband(leftJoystick.getX()) * DriveTrain.MAX_SPEED;
+        var ySpeed = -MathUtil.fitDeadband(leftJoystick.getY()) * DriveTrain.MAX_SPEED;
+        var rot = MathUtil.fitDeadband(rightJoystick.getX()) * DriveTrain.MAX_ANGULAR_SPEED;
 
         drivetrain.drive(xSpeed, ySpeed, rot, true);
     }

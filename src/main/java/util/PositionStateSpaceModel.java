@@ -82,7 +82,7 @@ public class PositionStateSpaceModel {
                 linearPositionSystem,
                 controller,
                 observer,
-                maxVoltage,
+                maxVoltage - systemIdentification.kS,
                 loopTime
         );
     }
@@ -103,6 +103,8 @@ public class PositionStateSpaceModel {
     public double getAppliedVoltage(double units) {
         linearSystemLoop.correct(VecBuilder.fill(units));
         linearSystemLoop.predict(loopTime);
-        return linearSystemLoop.getU(0) + (MathUtil.isWithinTolerance(units, 0, 0.01) ? 0 : systemIdentification.kS);
+        var target = linearSystemLoop.getU(0);
+        if(target > 0) return target + (MathUtil.isWithinTolerance(units, 0, 0.01) ? 0 : systemIdentification.kS);
+        else return target - (MathUtil.isWithinTolerance(units, 0, 0.01) ? 0 : systemIdentification.kS);
     }
 }

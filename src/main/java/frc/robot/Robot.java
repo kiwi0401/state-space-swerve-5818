@@ -29,16 +29,17 @@ public class Robot extends TimedRobot {
     @Override
     public void robotInit() {
         Logging.initialize();
-        if (Robot.isReal()) {
-            initializeAllSubsystems();
-            setDefaultCommands();
-        }
+
+        initializeAllSubsystems();
+        setDefaultCommands();
 
         var drive = Shuffleboard.getTab("Drive");
         drive.add(field2d)
                 .withSize(6, 4)
                 .withPosition(0, 0)
                 .withWidget("Field");
+
+        Gyro.getInstance().resetGyro();
     }
 
     @Override
@@ -48,7 +49,7 @@ public class Robot extends TimedRobot {
         NetworkTableInstance.getDefault().flush();
 
         //Default Logging
-        if(Robot.isReal()) shuffleboardLogging();
+        shuffleboardLogging();
 
         CommandScheduler.getInstance().run();
     }
@@ -68,7 +69,7 @@ public class Robot extends TimedRobot {
     }
 
     private void setDefaultCommands() {
-        CommandScheduler.getInstance().setDefaultCommand(DriveTrain.getInstance(), new SwerveControl());
+        //CommandScheduler.getInstance().setDefaultCommand(DriveTrain.getInstance(), new SwerveControl());
     }
 
     private void initializeAllSubsystems() {
@@ -93,6 +94,7 @@ public class Robot extends TimedRobot {
         drive.setEntry("x pose", dt.getRobotPose().getX());
         drive.setEntry("y pose", dt.getRobotPose().getY());
         drive.setEntry("robot angle", dt.getRobotPose().getRotation().getDegrees());
+        drive.setEntry("Gyro Angle", Gyro.getInstance().getAngle());
     }
 
     FieldMesh m;
@@ -115,6 +117,7 @@ public class Robot extends TimedRobot {
     double time = Timer.getFPGATimestamp();
     double ttPath = Timer.getFPGATimestamp();
     public static Trajectory trajectory;
+
 
     @Override
     public void simulationPeriodic() {
@@ -144,7 +147,6 @@ public class Robot extends TimedRobot {
                     ndex++;
                 }
             }
-
             Logging.robotShuffleboard.getTab("ML").setEntry("Num Objects", ndex);
             time = Timer.getFPGATimestamp();
         }

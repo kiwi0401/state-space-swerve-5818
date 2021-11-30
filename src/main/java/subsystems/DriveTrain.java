@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.geometry.Pose2d;
 import edu.wpi.first.wpilibj.geometry.Translation2d;
 import edu.wpi.first.wpilibj.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.trajectory.TrajectoryUtil;
 import edu.wpi.first.wpilibj.trajectory.TrapezoidProfile;
@@ -19,6 +20,8 @@ import edu.wpi.first.wpiutil.math.MatBuilder;
 import edu.wpi.first.wpiutil.math.Nat;
 import frc.robot.Logging;
 import org.rivierarobotics.lib.shuffleboard.RSTab;
+import org.rivierarobotics.lib.shuffleboard.RSTable;
+import org.rivierarobotics.lib.shuffleboard.RSTileOptions;
 import util.Gyro;
 
 import java.nio.file.Path;
@@ -36,7 +39,7 @@ public class DriveTrain extends SubsystemBase {
         return swerveDriveTrain;
     }
 
-    public static final double MAX_SPEED = 3.0; // m/s
+    public static final double MAX_SPEED = 2; // m/s
     public static final double MAX_ANGULAR_SPEED = Math.PI / 2; // rad/s
     public static final double MAX_ANGULAR_ACCELERATION = Math.PI / 4; // rad/s
 
@@ -48,6 +51,8 @@ public class DriveTrain extends SubsystemBase {
     private final HolonomicDriveController holonomicDriveController;
     private final SwerveDrivePoseEstimator swerveDrivePoseEstimator;
 
+    RSTable[] loggingTables = new RSTable[4];
+
     private final RSTab tab;
 
     public DriveTrain() {
@@ -57,10 +62,10 @@ public class DriveTrain extends SubsystemBase {
         swervePosition[2] = new Translation2d(-0.381, -0.381); //BL
         swervePosition[3] = new Translation2d(0.381, -0.381); //BR
 
-        swerveModules[0] = new SwerveModule(MotorIDs.FRONT_RIGHT_DRIVE, MotorIDs.FRONT_RIGHT_STEER, 0);
-        swerveModules[1] = new SwerveModule(MotorIDs.FRONT_LEFT_DRIVE, MotorIDs.FRONT_LEFT_STEER, 0);
-        swerveModules[2] = new SwerveModule(MotorIDs.BACK_LEFT_DRIVE, MotorIDs.BACK_LEFT_STEER, 0);
-        swerveModules[3] = new SwerveModule(MotorIDs.BACK_RIGHT_DRIVE, MotorIDs.BACK_RIGHT_STEER, 0);
+        swerveModules[0] = new SwerveModule(MotorIDs.FRONT_RIGHT_DRIVE, MotorIDs.FRONT_RIGHT_STEER, 0, false, false);
+        swerveModules[1] = new SwerveModule(MotorIDs.FRONT_LEFT_DRIVE, MotorIDs.FRONT_LEFT_STEER, 0, false, false);
+        swerveModules[2] = new SwerveModule(MotorIDs.BACK_LEFT_DRIVE, MotorIDs.BACK_LEFT_STEER, 0, false, false);
+        swerveModules[3] = new SwerveModule(MotorIDs.BACK_RIGHT_DRIVE, MotorIDs.BACK_RIGHT_STEER, 0, false, false);
 
         this.tab = Logging.robotShuffleboard.getTab("Swerve");
 
@@ -94,6 +99,10 @@ public class DriveTrain extends SubsystemBase {
                 new ProfiledPIDController(1, 0, 0,
                         new TrapezoidProfile.Constraints(MAX_ANGULAR_SPEED, MAX_ANGULAR_ACCELERATION))
         );
+        loggingTables[0] = new RSTable("FR", tab, new RSTileOptions(3, 4, 0, 0));
+        loggingTables[1] = new RSTable("FL", tab, new RSTileOptions(3, 4, 3, 0));
+        loggingTables[2] = new RSTable("BL", tab, new RSTileOptions(3, 4, 6, 0));
+        loggingTables[3] = new RSTable("BR", tab, new RSTileOptions(3, 4, 9, 0));
     }
 
     public void setAngleOfSwerveModules(double angle) {
@@ -106,6 +115,10 @@ public class DriveTrain extends SubsystemBase {
         for (var m : swerveModules) {
             m.setDriveMotorVelocity(vel);
         }
+    }
+
+    public void testSetVoltage(double v) {
+        swerveModules[3].setSteeringMotorVoltage(v);
     }
 
     public SwerveDriveKinematics getSwerveDriveKinematics() {
@@ -129,6 +142,7 @@ public class DriveTrain extends SubsystemBase {
         for (int i = 0; i < swerveModuleStates.length; i++) {
             swerveModules[i].setDesiredState(swerveModuleStates[i]);
         }
+        //SmartDashboard.putNumber("ANGLESET", swerveModuleStates[0].angle.getDegrees());
     }
 
     public void drivePath(String path) {
@@ -190,11 +204,17 @@ public class DriveTrain extends SubsystemBase {
     @Override
     public void periodic() {
         updateOdometry();
+
         for(int i = 0; i < swerveModules.length; i++) {
-            tab.setEntry(driveIDs[i] + " Swerve Velocity", swerveModules[i].getVelocity());
-            tab.setEntry(driveIDs[i] + " Swerve Angle", Math.toDegrees(swerveModules[i].getAngle()));
-            tab.setEntry(driveIDs[i] + " Swerve Drive Voltage", swerveModules[i].getDriveVoltage());
-            tab.setEntry(driveIDs[i] + " Swerve Steer Voltage", swerveModules[i].getSteerVoltage());
+            loggingTables[i].setEntry(driveIDs[i] + " Swerve Velocity", swerveModules[i].getVelocity());
+            loggingTables[i].setEntry(driveIDs[i] + " Swerve Angle", Math.toDegrees(swerveModules[i].getAbsoluteAngle()));
+            loggingTables[i].setEntry(driveIDs[i] + " Swerve Drive Voltage", swerveModules[i].getDriveVoltage());
+            loggingTables[i].setEntry(driveIDs[i] + " Swerve Steer Voltage", swerveModules[i].getSteerVoltage());
+            loggingTables[i].setEntry(driveIDs[i] + " Swerve Full Angle", Math.toDegrees(swerveModules[i].getAngle()));
+            loggingTables[i].setEntry(driveIDs[i] + " Swerve Steer Velocity", swerveModules[i].getSteerMotorVel());
+            loggingTables[i].setEntry(driveIDs[i] + " Swerve Target Rotation", swerveModules[i].getRotation2d().getDegrees());
+            loggingTables[i].setEntry(driveIDs[i] + " Swerve Abs Target Rotation", swerveModules[i].targetAng().getDegrees());
+            loggingTables[i].setEntry(driveIDs[i] + " Swerve Target Velocity", swerveModules[i].getTargetVelocity());
         }
         for (var m : swerveModules) m.periodic();
     }
