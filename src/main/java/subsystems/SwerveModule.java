@@ -6,9 +6,7 @@ import com.revrobotics.CANSparkMaxLowLevel;
 import edu.wpi.first.wpilibj.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.Logging;
 import org.rivierarobotics.lib.MathUtil;
-import org.rivierarobotics.lib.shuffleboard.RSTab;
 import util.PositionStateSpaceModel;
 import util.SystemIdentification;
 import util.VelocityStateSpaceModel;
@@ -27,8 +25,8 @@ public class SwerveModule {
     private final WPI_TalonSRX steeringMotor;
     private final static double STEER_MOTOR_TICK_TO_ANGLE = 2 * Math.PI / ENCODER_RESOLUTION;
     private final PositionStateSpaceModel steerController;
-    private Rotation2d rotation2d = new Rotation2d(0);
-    private Rotation2d targetAng = new Rotation2d(0);
+    private Rotation2d targetRotation = new Rotation2d(0);
+    private Rotation2d targetRotationClamped = new Rotation2d(0);
 
     /**
      * Constructs a SwerveModule.
@@ -48,7 +46,9 @@ public class SwerveModule {
         SystemIdentification dmSID = new SystemIdentification(0.2, 2, 1);
         SystemIdentification tmSID = new SystemIdentification(0.5, 1, 3);
 
-        steeringMotor.setInverted(true);
+        steeringMotor.setInverted(!steeringInverted);
+        driveMotor.setInverted(driveInverted);
+
 
         this.driveController = new VelocityStateSpaceModel(
                 dmSID, 0.1, 0.1,
@@ -142,34 +142,37 @@ public class SwerveModule {
 
         if (Math.abs(getAngleDiff(clampedAng, posTarget)) <= Math.abs(getAngleDiff(clampedAng, negTarget))) {
             diff += getAngleDiff(clampedAng, posTarget);
-            targetSpeed = targetRotation >= 0 ? targetSpeed : -targetSpeed;
         } else {
             diff += getAngleDiff(clampedAng, negTarget);
-            targetSpeed = targetRotation <= 0 ? targetSpeed : -targetSpeed;
         }
 
-        diff = Math.abs(getAngleDiff(clampedAng, targetRotation)) < Math.abs(diff) ? getAngleDiff(clampedAng, targetRotation) : diff;
+        if(Math.abs(getAngleDiff(clampedAng, targetRotation)) < Math.abs(diff)) {
+            diff = getAngleDiff(clampedAng, targetRotation);
 
-
-
-        SmartDashboard.putNumber("ANGDIFF", Math.toDegrees(diff));
+        }
 
         double targetAng = currAng + diff;
 
-        rotation2d = new Rotation2d(targetAng);
-        this.targetAng = new Rotation2d(clampAngle(targetAng));
-        targetVelocity = targetSpeed;
+        if(MathUtil.isWithinTolerance(targetRotation, clampAngle(targetAng), 1)) targetSpeed = state.speedMetersPerSecond;
+        else targetSpeed = -state.speedMetersPerSecond;
+
+
+        this.targetRotation = new Rotation2d(targetAng);
+        this.targetRotationClamped = new Rotation2d(clampAngle(targetAng));
+        this.targetVelocity = targetSpeed;
+//        this.targetRotationClamped = state.angle;
+//        this.targetVelocity = state.speedMetersPerSecond;
 
         setDriveMotorVelocity(targetSpeed);
         setSteeringMotorAngle(targetAng);
     }
 
-    public Rotation2d getRotation2d() {
-        return rotation2d;
+    public Rotation2d getTargetRotation() {
+        return targetRotation;
     }
 
-    public Rotation2d targetAng() {
-        return targetAng;
+    public Rotation2d getTargetRotationClamped() {
+        return targetRotationClamped;
     }
 
     public double getTargetVelocity() {
