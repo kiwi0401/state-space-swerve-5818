@@ -1,4 +1,4 @@
-package util;
+package util.StateSpace;
 
 import edu.wpi.first.wpilibj.controller.LinearQuadraticRegulator;
 import edu.wpi.first.wpilibj.estimator.KalmanFilter;
@@ -25,7 +25,7 @@ public class VelocityStateSpaceModel {
      * @param systemIdentification   kS (static friction) kV (volts/units/s) kA (volts/units/s*s)
      * @param velocityAccuracy       how accurate we think our velocity model is (higher is more aggressive)
      * @param velocityErrorTolerance how tolerable we are to velocity error (lower is more aggressive)
-     * @param voltageControlEffort   best left at 12. decrease this to penalize control effort (using more voltage)
+     * @param voltageControlEffort   decrease this to penalize control effort (using more voltage)
      * @param maxVoltage             the maximum voltage to apply to the motor (use this to limit speed)
      */
     public VelocityStateSpaceModel(SystemIdentification systemIdentification,
@@ -42,7 +42,7 @@ public class VelocityStateSpaceModel {
      * @param systemIdentification   kS (static friction) kV (volts/units/s) kA (volts/units/s*s)
      * @param velocityAccuracy       how accurate we think our velocity model is (higher is more aggressive)
      * @param velocityErrorTolerance how tolerable we are to velocity error (lower is more aggressive)
-     * @param voltageControlEffort   best left at 12. decrease this to penalize control effort (using more voltage)
+     * @param voltageControlEffort   decrease this to penalize control effort (using more voltage)
      * @param maxVoltage             the maximum voltage to apply to the motor (use this to limit speed)
      * @param loopTime               if you want to run the system faster than the default loop time of 20ms, use this
      */

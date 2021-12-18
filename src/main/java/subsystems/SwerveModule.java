@@ -5,11 +5,10 @@ import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel;
 import edu.wpi.first.wpilibj.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.kinematics.SwerveModuleState;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import org.rivierarobotics.lib.MathUtil;
-import util.PositionStateSpaceModel;
-import util.SystemIdentification;
-import util.VelocityStateSpaceModel;
+import util.StateSpace.PositionStateSpaceModel;
+import util.StateSpace.SystemIdentification;
+import util.StateSpace.VelocityStateSpaceModel;
 
 public class SwerveModule {
     private static final double WHEEL_RADIUS = 0.0508;
@@ -41,24 +40,24 @@ public class SwerveModule {
         this.zero_ticks = zero_ticks;
 
         driveMotor.getEncoder().setPositionConversionFactor(2 * Math.PI * WHEEL_RADIUS / ENCODER_RESOLUTION);
-        driveMotor.getEncoder().setVelocityConversionFactor(2 * Math.PI * WHEEL_RADIUS / ENCODER_RESOLUTION * 10);
+        driveMotor.getEncoder().setVelocityConversionFactor(2 * Math.PI * WHEEL_RADIUS / ENCODER_RESOLUTION);
 
-        SystemIdentification dmSID = new SystemIdentification(0.2, 2, 1);
-        SystemIdentification tmSID = new SystemIdentification(0.5, 1, 3);
+        SystemIdentification dmSID = new SystemIdentification(0.0, 7.0/2.5, 7/(2.5/0.01));
+        SystemIdentification tmSID = new SystemIdentification(0.0, 7.0/4.0, 7/(4.0/0.01));
 
         steeringMotor.setInverted(!steeringInverted);
         driveMotor.setInverted(driveInverted);
 
 
         this.driveController = new VelocityStateSpaceModel(
-                dmSID, 0.1, 0.1,
-                0.1, 0.0005, 12
+                dmSID, 0.1, 0.01,
+                0.1, 0.00015, 12
         );
 
         this.steerController = new PositionStateSpaceModel(
                 tmSID, 1, 1,
                 0.01, 0.01, 0.1,
-                0.03, 12
+                0.08, 12
         );
     }
 
@@ -77,6 +76,10 @@ public class SwerveModule {
 
     public double getAngle() {
         return (steeringMotor.getSensorCollection().getPulseWidthPosition() - zero_ticks) * STEER_MOTOR_TICK_TO_ANGLE;
+    }
+
+    public double getPosTicks() {
+        return steeringMotor.getSensorCollection().getPulseWidthPosition();
     }
 
     public double getDriveVoltage() {
@@ -138,30 +141,25 @@ public class SwerveModule {
 
         double posTarget = targetRotation + Math.PI;
         double negTarget = targetRotation - Math.PI;
-        double diff = 0.0;
+        double diff;
 
         if (Math.abs(getAngleDiff(clampedAng, posTarget)) <= Math.abs(getAngleDiff(clampedAng, negTarget))) {
-            diff += getAngleDiff(clampedAng, posTarget);
-        } else {
-            diff += getAngleDiff(clampedAng, negTarget);
-        }
+            diff = getAngleDiff(clampedAng, posTarget);
+        } else diff = getAngleDiff(clampedAng, negTarget);
 
-        if(Math.abs(getAngleDiff(clampedAng, targetRotation)) < Math.abs(diff)) {
+        if (Math.abs(getAngleDiff(clampedAng, targetRotation)) <= Math.abs(diff)) {
             diff = getAngleDiff(clampedAng, targetRotation);
-
         }
 
         double targetAng = currAng + diff;
 
-        if(MathUtil.isWithinTolerance(targetRotation, clampAngle(targetAng), 1)) targetSpeed = state.speedMetersPerSecond;
+        if (MathUtil.isWithinTolerance(targetRotation, clampAngle(targetAng), 0.1))
+            targetSpeed = state.speedMetersPerSecond;
         else targetSpeed = -state.speedMetersPerSecond;
-
 
         this.targetRotation = new Rotation2d(targetAng);
         this.targetRotationClamped = new Rotation2d(clampAngle(targetAng));
         this.targetVelocity = targetSpeed;
-//        this.targetRotationClamped = state.angle;
-//        this.targetVelocity = state.speedMetersPerSecond;
 
         setDriveMotorVelocity(targetSpeed);
         setSteeringMotorAngle(targetAng);
@@ -180,7 +178,7 @@ public class SwerveModule {
     }
 
     public double getSteerMotorVel() {
-        return steeringMotor.getSensorCollection().getPulseWidthVelocity();
+        return steeringMotor.getSensorCollection().getPulseWidthVelocity() * 10 * STEER_MOTOR_TICK_TO_ANGLE;
     }
 
     public void periodic() {

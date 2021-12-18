@@ -17,6 +17,7 @@ import util.Gyro;
 import util.ML.MLCore;
 
 import java.io.IOException;
+import java.security.Guard;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -24,7 +25,7 @@ import java.util.concurrent.Executors;
 public class Robot extends TimedRobot {
 
     private RSTable table;
-    Field2d field2d = new Field2d();
+    private final Field2d field2d = new Field2d();
 
     @Override
     public void robotInit() {
@@ -57,6 +58,7 @@ public class Robot extends TimedRobot {
     @Override
     public void teleopInit() {
         new ButtonConfiguration().initTeleop();
+        Gyro.getInstance().resetGyro();
     }
 
     @Override
@@ -69,7 +71,7 @@ public class Robot extends TimedRobot {
     }
 
     private void setDefaultCommands() {
-        //CommandScheduler.getInstance().setDefaultCommand(DriveTrain.getInstance(), new SwerveControl());
+        CommandScheduler.getInstance().setDefaultCommand(DriveTrain.getInstance(), new SwerveControl());
     }
 
     private void initializeAllSubsystems() {
@@ -93,7 +95,7 @@ public class Robot extends TimedRobot {
         drive.setEntry("turn vel (deg/s)", Math.toDegrees(dt.getChassisSpeeds().omegaRadiansPerSecond));
         drive.setEntry("x pose", dt.getRobotPose().getX());
         drive.setEntry("y pose", dt.getRobotPose().getY());
-        drive.setEntry("robot angle", dt.getRobotPose().getRotation().getDegrees());
+        drive.setEntry("Robot Angle", dt.getRobotPose().getRotation().getDegrees());
         drive.setEntry("Gyro Angle", Gyro.getInstance().getAngle());
     }
 
@@ -118,9 +120,9 @@ public class Robot extends TimedRobot {
     double ttPath = Timer.getFPGATimestamp();
     public static Trajectory trajectory;
 
-
     @Override
     public void simulationPeriodic() {
+        DriveTrain.getInstance().drive(0,0,1,true);
         if (Timer.getFPGATimestamp() - ttPath > 0.2) {
             Thread th = new Thread(() -> {
                 double startx = 0;

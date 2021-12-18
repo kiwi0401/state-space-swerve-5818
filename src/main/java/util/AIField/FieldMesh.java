@@ -189,8 +189,6 @@ public class FieldMesh {
         return areaWeights;
     }
 
-
-
     /**
      * Add weights to the nodes in an area to penalize traveling through it. negative weights will
      * prioritize a zone more than others.
@@ -263,7 +261,7 @@ public class FieldMesh {
             var startTime = System.nanoTime();
             List<FieldNode> path = getPath(x1 * 100.0, y1 * 100.0, x2 * 100.0, y2 * 100.0);
             var poseList = convertPathToPose2d(path);
-            if (poseList == null || poseList.size() < 3) return null;
+            if (poseList == null || poseList.size() <= 1) return null;
 
             TrajectoryConfig config = new TrajectoryConfig(MAX_VELOCITY, MAX_ACCELERATION);
             config.setEndVelocity(shouldStop ? 0 : MAX_VELOCITY);
@@ -276,7 +274,7 @@ public class FieldMesh {
             try {
                 trajectory = TrajectoryGenerator.generateTrajectory(
                         poseList.get(0),
-                        poseList.subList(1, poseList.size() - 2).stream().map(Pose2d::getTranslation).collect(Collectors.toList()),
+                        poseList.size() >= 2 ? poseList.subList(1, poseList.size() - 2).stream().map(Pose2d::getTranslation).collect(Collectors.toList()) : new ArrayList<>(),
                         poseList.get(poseList.size() - 1),
                         config
                 );
