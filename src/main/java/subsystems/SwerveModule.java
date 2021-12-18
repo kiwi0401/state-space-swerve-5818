@@ -40,7 +40,7 @@ public class SwerveModule {
         this.zero_ticks = zero_ticks;
 
         driveMotor.getEncoder().setPositionConversionFactor(2 * Math.PI * WHEEL_RADIUS / ENCODER_RESOLUTION);
-        driveMotor.getEncoder().setVelocityConversionFactor(2 * Math.PI * WHEEL_RADIUS / ENCODER_RESOLUTION);
+        driveMotor.getEncoder().setVelocityConversionFactor((2 * Math.PI * WHEEL_RADIUS / ENCODER_RESOLUTION) * 10);
 
         SystemIdentification dmSID = new SystemIdentification(0.0, 7.0/2.5, 7/(2.5/0.01));
         SystemIdentification tmSID = new SystemIdentification(0.0, 7.0/4.0, 7/(4.0/0.01));
