@@ -42,6 +42,7 @@ public class DriveTrain extends SubsystemBase {
     private final Gyro gyro;
     private final SwerveModule[] swerveModules = new SwerveModule[4];
     private final Translation2d[] swervePosition = new Translation2d[4];
+
     private final String[] driveIDs = new String[]{"FL","FR","BL","BR"};
     private final SwerveDriveKinematics swerveDriveKinematics;
     private final HolonomicDriveController holonomicDriveController;
@@ -103,15 +104,11 @@ public class DriveTrain extends SubsystemBase {
     }
 
     public void setAngleOfSwerveModules(double angle) {
-        for (var m : swerveModules) {
-            m.setSteeringMotorAngle(angle);
-        }
+        for (var m : swerveModules) m.setSteeringMotorAngle(angle);
     }
 
     public void setVelocityOfSwerveModules(double vel) {
-        for (var m : swerveModules) {
-            m.setDriveMotorVelocity(vel);
-        }
+        for (var m : swerveModules) m.setDriveMotorVelocity(vel);
     }
 
     public void testSetVoltage(double v) {
@@ -136,9 +133,7 @@ public class DriveTrain extends SubsystemBase {
                         : new ChassisSpeeds(xSpeed, ySpeed, rot)
         );
         SwerveDriveKinematics.normalizeWheelSpeeds(swerveModuleStates, MAX_SPEED);
-        for (int i = 0; i < swerveModuleStates.length; i++) {
-            swerveModules[i].setDesiredState(swerveModuleStates[i]);
-        }
+        for (int i = 0; i < swerveModuleStates.length; i++) swerveModules[i].setDesiredState(swerveModuleStates[i]);
     }
 
     public void drivePath(String path) {
